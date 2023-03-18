@@ -1,0 +1,136 @@
+1.
+
+To install the required packages on Amazon Linux 2 on BOSTAIN SERVER AMI and Amazon Linux AMI
+Log on to your instance. For more information, see Connect to your Linux instance.
+
+At a command prompt, install packages as follows:
+
+
+sudo yum install -y perl-Switch perl-DateTime perl-Sys-Syslog perl-LWP-Protocol-https perl-Digest-SHA.x86_64
+
+2. 
+
+Install monitoring scripts
+The following steps show you how to download, uncompress, and configure the CloudWatch monitoring scripts on an EC2 Linux instance.
+
+To download, install, and configure the monitoring scripts
+At a command prompt, move to a folder where you want to store the monitoring scripts and run the following command to download them:
+
+curl https://aws-cloudwatch.s3.amazonaws.com/downloads/CloudWatchMonitoringScripts-1.2.2.zip -O
+
+3.
+
+Run the following commands to install the monitoring scripts you downloaded:
+
+
+unzip CloudWatchMonitoringScripts-1.2.2.zip && \ rm CloudWatchMonitoringScripts-1.2.2.zip && \ cd aws-scripts-mon
+
+
+4.
+The following example performs a simple test run without posting data to CloudWatch. The following examples assume that you provided an IAM role or awscreds.conf file, name of role is My_Ansible_Role_For_EC2_CloudWatch-ticket15
+
+
+
+./mon-put-instance-data.pl --mem-util --verify --verbose
+
+5
+
+The following example collects all available memory metrics and sends them to CloudWatch, counting cache and buffer memory as used
+
+./mon-put-instance-data.pl --mem-used-incl-cache-buff --mem-util --mem-used --mem-avail
+
+
+6
+
+The following example collects aggregated metrics for an Auto Scaling group and sends them to Amazon CloudWatch without reporting individual instance metrics
+
+./mon-put-instance-data.pl --mem-util --mem-used --mem-avail --auto-scaling=only
+
+
+7
+
+
+The following example collects aggregated metrics for instance type, AMI ID and region, and sends them to Amazon CloudWatch without reporting individual instance metrics
+
+./mon-put-instance-data.pl --mem-util --mem-used --mem-avail --aggregated=only
+
+
+8.
+
+
+To set a cron schedule for metrics reported to CloudWatch, start editing the crontab using the crontab -e command. Add the following command to report memory and disk space utilization to CloudWatch every five minutes:
+
+
+
+*/5 * * * * ~/aws-scripts-mon/mon-put-instance-data.pl --mem-used-incl-cache-buff --mem-util --disk-space-util --disk-path=/ --from-cron
+
+
+
+To get utilization statistics for the last 12 hours, run the following command:
+
+
+./mon-get-instance-stats.pl --recent-hours=12
+
+if you using the command line use this code so it can push metrics to cloud watch.
+
+
+~/aws-scripts-mon/mon-put-instance-data.pl --mem-used-incl-cache-buff --mem-util --disk-space-util --disk-path=/
+
+
+create bastian in public ip subnet
+whole install the ansible pickage
+
+create anisble playbook file
+run the ansible-playbook ansible yaml formate file
+
+
+oupt
+see the resutl cluod watch install-
+
+
+
+
+
+
+
+
+
+---
+- name: Install CloudWatch agent and send custom metrics on bastion hosts
+ hosts: local
+ gather_facts: false
+ tasks:
+- name: Gather a list of instances with the tag "bostian-server-new"
+   ec2_instance_info:
+     filters:
+       "tag:Name": "bastian server"
+   register: bastion_instances
+- name: Install dependencies
+   package:
+     name: awslogs
+     state: present
+   delegate_to: "{{ item.private_ip }}"
+   loop: "{{ bastion_instances.instances }}"
+- name: Download the CloudWatch agent configuration file
+   command: aws s3 cp s3://my-cloudwatch-bucket/cloudwatch-agent-config.json /tmp/cloudwatch-agent-config.json
+   delegate_to: "{{ item.private_ip }}"
+   loop: "{{ bastion_instances.instances }}"
+- name: Install the CloudWatch agent
+   command: /usr/local/bin/aws cloudwatch configure-agent --input-path /tmp/cloudwatch-agent-config.json
+   delegate_to: "{{ item.private_ip }}"
+   loop: "{{ bastion_instances.instances }}"
+- name: Start the CloudWatch agent
+   service:
+     name: awslogs
+     state: started
+     enabled: yes
+   delegate_to: "{{ item.private_ip }}"
+   loop: "{{ bastion_instances.instances }}"
+- name: Send custom metrics - Memory Usage
+   shell: echo "{{ item.private_ip }} memory_usage `free -m | grep Mem | awk '{print $3/$2 * 100.0}'`" | /usr/local/bin/aws cloudwatch put-metric-data --metric-name MemoryUsage --unit Percent --value `free -m | grep Mem | awk '{print $3/$2 * 100.0}'` --dimensions InstanceId={{ item.instance_id }}
+   delegate_to: "{{ item.private_ip }}"
+   loop: "{{ bastion_instances.instances }}"
+- name: Send custom metrics - Disk Space Utilization
+   shell: echo "{{ item.private_ip }} disk_utilization `df -h / | grep / | awk '{print $5}' | sed 's/%//g'`" | /usr/local/bin/aws cloudwatch put-metric-data --metric-name DiskSpaceUtilization --unit Percent --value `df -h / | grep / | awk '{print $5}' | sed 's/%//g'` --dimensions InstanceId={{ item.instance_id }}
+   delegate_to: "{{ item.private_ip }}"
+   loop: "{{ bastion_instances.instances }}"

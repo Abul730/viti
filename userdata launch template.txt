@@ -1,0 +1,24 @@
+#!/bin/bash
+# update linux then install apache server, git, ruby for code deploy and clone website files from codecommit
+yum update -y
+yum install -y git
+yum install -y ruby
+yum install -y wget
+yum install -y httpd
+systemctl start httpd
+systemctl enable httpd
+# download and install code deploy agent from specific bucket in assigned region
+cd /home/ec2-user
+wget https://aws-codedeploy-us-east-1.s3.us-east-1.amazonaws.com/latest/install
+chmod +x ./install
+sudo ./install auto
+cd /var/www/
+# authorize codecommit credentials then clone repo
+git config --system user.email "abulsahibzada@gmail.com"
+git config --system user.name "Abul"
+git config --system credential.helper '!aws codecommit credential-helper $@'
+git config --system credential.UseHttpPath true
+sudo git clone https://git-codecommit.us-east-1.amazonaws.com/v1/repos/website-folder
+
+# create symlink for index.html from repo directory to var/www/html/ directory
+ln -sf /var/www/website-folder /var/www/html/website-folder

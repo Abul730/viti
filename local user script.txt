@@ -1,0 +1,20 @@
+schemaVersion: "2.2"
+description: "Add user 'break-glass' to all instances with RSA public key only"
+
+parameters:
+  username:
+    type: "String"
+    description: "The username to add to the instance."
+    default: "break-glass"
+  publicKey:
+    type: "String"
+    description: "The RSA public key for the user."
+    default: "ssh-rsa AAA"
+
+mainSteps:
+- action: "aws:runShellScript"
+  name: "add-user-to-instance"
+  inputs:
+    runCommand:
+    - "sudo useradd -m -s /bin/bash {{ username }}"
+    - "echo '{{ publicKey }}' | sudo tee -a /home/{{ username }}/.ssh/authorized_keys"

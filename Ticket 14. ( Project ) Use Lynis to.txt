@@ -1,0 +1,48 @@
+Ticket 14. ( Project ) Use Lynis to audit your Bastion host
+
+
+Link issue
+
+
+
+Description
+
+[ PROJECT ] Update the userdata script on the Bastion to Install Lynis and then use SSM to schedule a Lynis Scan the Bastion.
+Lynis is an open source security tool. It helps with auditing systems running UNIX-alike systems (Linux, macOS, BSD), and providing guidance for system hardening and compliance testing. This document contains the basics to use the software.
+
+The audit scan should be scheduled to run every 2 days at 12:00 PM and the output should be sent to a directory call /Audit_Reports in the EFS filesystem mounted on the instance.
+
+Sub Task 1. Modify the userdata script to Install Lynis on your Bastion
+
+
+
+Description
+
+[ TASK ] Install Lynis in your bastion host so you can scan your host for vulnerabilities.
+Provide path of the binary you installed.
+
+
+
+Sub Task 2. Manage your Bastion host with SSM
+
+
+
+Description
+
+[ TASK ] Configure the Bastion hosts to be managed by Systems Manager.
+Provide screenshot that can confirm that SSM is managing your Bastion Host.
+
+
+
+
+
+Sub Task 3. Use run command and automate the process
+
+
+
+Description
+
+[ TASK ] Scan your bastion host with Lynis using Run Command and also automate the process.
+The audit scan should be scheduled to run every 2 days at 12:00 PM and the output should be sent to a directory call /Audit_Reports in the EFS filesystem mounted on the instance.
+
+Provide screenshots of the steps to make this happen.

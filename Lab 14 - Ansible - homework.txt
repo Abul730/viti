@@ -1,0 +1,31 @@
+
+
+[lynis]
+name=CISOfy Software - Lynis package
+baseurl=https://packages.cisofy.com/community/lynis/rpm/
+enabled=1
+gpgkey=https://packages.cisofy.com/keys/cisofy-software-rpms-public.key
+gpgcheck=1
+priority=2
+
+
+#cloud-config
+# vim: syntax=yaml
+#
+# Add yum repository configuration to the system
+#
+# The following example adds the file /etc/yum.repos.d/epel_testing.repo
+# which can then subsequently be used by yum for later operations.
+yum_repos:
+    # The name of the repository
+    lynis-repos:
+        # Any repository configuration options
+        # See: man yum.conf
+        #
+        # This one is required!
+        baseurl: https://packages.cisofy.com/community/lynis/rpm/
+        enabled: true
+        failovermethod: priority
+        gpgcheck: true
+        gpgkey: https://packages.cisofy.com/keys/cisofy-software-rpms-public.key
+        name: CISOfy Software - Lynis package

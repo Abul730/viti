@@ -1,0 +1,107 @@
+1. 
+
+Installed the required package in i-08c615c903c34b1d6 instance.
+
+sudo yum install -y perl-Switch perl-DateTime perl-Sys-Syslog perl-LWP-Protocol-https perl-Digest-SHA.x86_64
+
+
+2. 
+
+Downloaded/installed/configured the monitoring script:
+
+curl https://aws-cloudwatch.s3.amazonaws.com/downloads/CloudWatchMonitoringScripts-1.2.2.zip -O
+Unzipped:
+
+
+unzip CloudWatchMonitoringScripts-1.2.2.zip && \
+rm CloudWatchMonitoringScripts-1.2.2.zip && \
+
+cd aws-scripts-mon
+
+3.
+
+ Cloudwatch and EC2 instance permissions added in the role - “Role-Ticket-MAT-49”
+
+4. 
+
+Performed a simple test without positing data:
+
+./mon-put-instance-data.pl --mem-util --verify --verbose
+
+
+
+5.
+
+ Collected all available memory metrics and sent them to CloudWatch, counting cache and buffer memory as used
+./mon-put-instance-data.pl --mem-used-incl-cache-buff --mem-util --mem-used --mem-avail
+
+
+
+
+6.
+
+ Collected aggregated metrics for an Auto Scaling group and sent them to Amazon CloudWatch without reporting individual instance metrics.
+
+./mon-put-instance-data.pl --mem-util --mem-used --mem-avail --auto-scaling=only
+
+7.
+
+ Collected aggregated metrics for instance type, AMI ID and region, and sent them to Amazon CloudWatch without reporting individual instance metrics
+./mon-put-instance-data.pl --mem-util --mem-used --mem-avail --aggregated=only
+
+
+8.
+
+ crontab -e (added with the following to report memory and disk utilization every 5 minutes)
+*/5 * * * * ~/aws-scripts-mon/mon-put-instance-data.pl --mem-used-incl-cache-buff --mem-util --disk-space-util --disk-path=/ --from-cron
+
+
+9.
+
+Checked utilization statistics in the last 12 hrs.
+
+./mon-get-instance-stats.pl --recent-hours=12
+
+
+
+
+Ansible playbook:
+---
+- name: Install CloudWatch agent and send custom metrics on bastion hosts
+ hosts: local
+ gather_facts: false
+ tasks:
+- name: Gather a list of instances with the tag "EC2-TKT-49-54-Bastion Instance"
+   ec2_instance_info:
+     filters:
+       "tag:Name": "EC2-TKT-49-54-Bastion Instance"
+   register: bastion_instances
+- name: Install dependencies
+   package:
+     name: awslogs
+     state: present
+   delegate_to: "{{ item.private_ip }}"
+   loop: "{{ bastion_instances.instances }}"
+- name: Download the CloudWatch agent configuration file
+   command: aws s3 cp s3://my-cloudwatch-bucket/cloudwatch-agent-config.json /tmp/cloudwatch-agent-config.json
+   delegate_to: "{{ item.private_ip }}"
+   loop: "{{ bastion_instances.instances }}"
+- name: Install the CloudWatch agent
+   command: /usr/local/bin/aws cloudwatch configure-agent --input-path /tmp/cloudwatch-agent-config.json
+   delegate_to: "{{ item.private_ip }}"
+   loop: "{{ bastion_instances.instances }}"
+- name: Start the CloudWatch agent
+   service:
+     name: awslogs
+     state: started
+     enabled: yes
+   delegate_to: "{{ item.private_ip }}"
+   loop: "{{ bastion_instances.instances }}"
+- name: Send custom metrics - Memory Usage
+   shell: echo "{{ item.private_ip }} memory_usage `free -m | grep Mem | awk '{print $3/$2 * 100.0}'`" | /usr/local/bin/aws cloudwatch put-metric-data --metric-name MemoryUsage --unit Percent --value `free -m | grep Mem | awk '{print $3/$2 * 100.0}'` --dimensions InstanceId={{ item.instance_id }}
+   delegate_to: "{{ item.private_ip }}"
+   loop: "{{ bastion_instances.instances }}"
+- name: Send custom metrics - Disk Space Utilization
+   shell: echo "{{ item.private_ip }} disk_utilization `df -h / | grep / | awk '{print $5}' | sed 's/%//g'`" | /usr/local/bin/aws cloudwatch put-metric-data --metric-name DiskSpaceUtilization --unit Percent --value `df -h / | grep / | awk '{print $5}' | sed 's/%//g'` --dimensions InstanceId={{ item.instance_id }}
+   delegate_to: "{{ item.private_ip }}"
+   loop: "{{ bastion_instances.instances }}"

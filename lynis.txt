@@ -1,0 +1,19 @@
+sudo amazon-linux-extras install -y lynis
+
+
+
+#installing Lynis tools for security and audit
+#!/bin/bash
+sudo yum update -y
+sudo yum install -y wget
+cd /tmp
+sudo wget https://cisofy.com/files/lynis-3.0.5.tar.gz
+sudo tar xzf lynis-3.0.5.tar.gz
+cd lynis
+sudo ./lynis audit system
+
+
+
+
+sudo apt-get install lynis
+sudo yum install lynis
